@@ -1,0 +1,77 @@
+node dt () returns (dt: float);
+let 
+  dt = 0.001;
+tel 
+
+node g () returns (g: float);
+let 
+  g = 0.001;
+tel 
+
+node init() returns (o:bool);
+let
+  o = true fby false;
+tel
+
+node average (x, y:int) returns (o:int);
+let 
+  o = (x+y)/2;
+tel
+
+node xor(a,b:bool) returns (o:bool);
+let 
+  o = (a and not(b)) or (not a and b);
+tel
+
+node full_add(a, b, c: bool) returns (s, co: bool);
+let
+  s = xor (xor (a, b), c);
+  co = (a and b) or (b and c) or (a and c);
+tel
+
+node half_add (a,b: bool) returns (s, co: bool);
+let
+ s = xor (a, b);
+ co = a and b;
+tel
+
+node full_add(a,b,c:bool) returns (s, co:bool);
+var s1, c1, c2: bool;
+let
+  (s1, c1) = half_add(a,b);
+  (s, c2) = half_add(c, s1);
+  co = c1 or c2;
+tel
+
+node nat (m:int) returns (o:int);
+let
+  o = 0 fby o + 1; 
+tel
+
+node edge (c:bool) returns (o:bool);
+let
+  o = c and not (false fby c);
+tel
+
+node integr (dx:float) returns (x:float);
+let
+  x = (0.0 fby x) +. dx *. dt(); 
+tel
+
+node double_integr (d2x: float) returns (x: float);
+var dx: float;
+let
+  x = integr (dx);
+  dx = integr (d2x);
+tel
+
+node min_max (x: int) returns (min, max:int);
+var first: bool;
+    pmin, pmax: int;
+let
+  first  = true fby false;
+  (pmin, pmax) = if first then (x, x) else ((0,0) fby (min, max));
+  (min, max) = if x < pmin then (x, pmax)
+               else if x > pmax then (pmin, x)
+               else (pmin, pmax);
+tel

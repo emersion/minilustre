@@ -1,0 +1,66 @@
+node integr (t, dx: float) returns (x: float);
+let 
+  x = 0.0 fby (t *. dx +. x);
+tel
+
+node deriv (t, x: float) returns (dx: float);
+let
+  dx =  (x -. (0.0 fby x)) /. t;
+tel
+
+
+node integr (dx: float) returns (x: float);
+let 
+  x = integr(0.05,dx);
+tel
+
+node deriv (x: float) returns (dx: float);
+let
+  dx = deriv(0.05, x) ;
+tel
+
+node equation (d2x0, d2y0: float) returns (theta: float);
+var thetap: float;
+let
+ theta = integr 
+           (integr(sin(thetap) *. (d2y0 +. 9.81) 
+                   -. cos(thetap) *. d2x0) /. 10.0 -. 1.2 *. thetap);
+ thetap = 0.0 fby theta;
+tel
+
+node position (x0, y0: float) returns (x, y: float); 
+var d2x0, d2y0, theta: float;
+let
+  d2x0 = deriv (deriv(x0));
+  d2y0 = deriv (deriv(y0));
+  theta = equation (d2x0, d2y0);
+  x = x0 +. 10.0 *. sin(theta);
+  y = y0 +. 10.0 *. cos(theta);
+tel
+
+node get_cursor () returns (x, y: float);
+var mx, my: int;
+let 
+  (mx,my) = get_mouse (());
+  (x,y) = (float_of_int(mx) /. 10.0, float_of_int(my) /. 10.0);
+tel 
+
+
+node draw_pendulum(x0, y0, x, y: float) returns (o:unit);
+var ix0, iy0, ix, iy : int;
+let
+  ix0 = int_of_float (10.0 *. x0);
+  ix  = int_of_float (10.0 *. x);
+  iy0 = int_of_float (10.0 *. y0);
+  iy  = int_of_float (10.0 *. y);
+  o = if false then draw_line(ix0, iy0, ix, iy)
+      else draw_circle(ix, iy, 5);
+tel
+
+node play(u:unit) returns (u2: unit);
+var x0, y0, x, y : float;
+let 
+  (x0,y0) = get_cursor ();
+  (x,y) = position(x0, y0);
+  u2 = draw_pendulum (x0, y0, x, y);
+tel

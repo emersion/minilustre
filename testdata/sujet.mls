@@ -1,0 +1,30 @@
+node f(x:int) returns (o:int);
+let
+ o = 1 fby 2 fby x;
+tel
+
+node g() returns (o:int);
+let
+ o = 1 + f(f(1));
+tel
+
+node minmax (x:int) returns (min,max:int);
+var pmin,pmax:int; first:bool;
+    aux1, aux2: int;
+let
+  first  = true fby false;
+  (aux1, aux2) = (0,0) fby (min, max);
+  (pmin, pmax) = if first then (x, x) else (aux1, aux2);
+  (min, max) = if x < pmin then (x, pmax)
+               else if x > pmax then (pmin, x)
+               else (pmin, pmax);
+tel
+
+node minmax2(x,y: int) returns (min,max: int);
+var min_x, max_x, min_y, max_y: int;
+let
+  (min_x, max_x) = minmax(x);
+  (min_y, max_y) = minmax(y);
+  min = if min_x < min_y then min_x else min_y;
+  max = if max_x > max_y then max_x else max_y;
+tel
