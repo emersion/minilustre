@@ -61,6 +61,47 @@ func (e ExprInteger) String() string {
 	return fmt.Sprintf("%d", int(e))
 }
 
+type BinOp int
+
+const (
+	BinOpMinus BinOp = iota
+	BinOpPlus
+	BinOpGt
+	BinOpLt
+	BinOpFby
+)
+
+func (op BinOp) String() string {
+	switch op {
+	case BinOpMinus:
+		return "-"
+	case BinOpPlus:
+		return "+"
+	case BinOpGt:
+		return ">"
+	case BinOpLt:
+		return "<"
+	case BinOpFby:
+		return "fby"
+	}
+	panic("unknown binary operator")
+}
+
+type ExprBinOp struct {
+	Op BinOp
+	Left, Right Expr
+}
+
+func (e *ExprBinOp) String() string {
+	return e.Left.String() + " " + e.Op.String() + " " + e.Right.String()
+}
+
+type ExprVar string
+
+func (e ExprVar) String() string {
+	return string(e)
+}
+
 type Assign struct {
 	Dst string
 	Body Expr

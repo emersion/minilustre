@@ -22,6 +22,7 @@ func (p *parser) accept(t itemType) (string, error) {
 		return "", fmt.Errorf("minilustre: expected token %v, got %v", t, p.cur)
 	}
 
+	// fmt.Println(p.cur)
 	s := p.cur.value
 	p.cur = nil
 	return s, nil
@@ -59,34 +60,36 @@ func (p *parser) typ() (Type, error) {
 	}
 }
 
-func (p *parser) param(params map[string]Type) error {
+func (p *parser) param(params map[string]Type) (bool, error) {
 	name, err := p.accept(itemIdent)
 	if err != nil {
-		return err
+		return false, nil
 	}
 
 	if _, err := p.accept(itemColon); err != nil {
-		return err
+		return true, err
 	}
 
 	t, err := p.typ()
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	if _, ok := params[name]; ok {
-		return fmt.Errorf("minilustre: duplicate parameter name '%v'", name)
+		return true, fmt.Errorf("minilustre: duplicate parameter name '%v'", name)
 	}
 
 	params[name] = t
-	return nil
+	return true, nil
 }
 
 func (p *parser) paramList() (map[string]Type, error) {
 	params := make(map[string]Type)
 	for {
-		if err := p.param(params); err != nil {
+		if more, err := p.param(params); err != nil {
 			return nil, err
+		} else if !more {
+			break
 		}
 
 		if _, err := p.accept(itemSemi); err != nil {
@@ -117,25 +120,26 @@ func (p *parser) exprList() ([]Expr, error) {
 	return l, nil
 }
 
-func (p *parser) expr() (Expr, error) {
+func (p *parser) exprMember() (Expr, error) {
 	if name, err := p.accept(itemIdent); err == nil {
-		if _, err := p.accept(itemLparen); err != nil {
-			return nil, err
-		}
+		if _, err := p.accept(itemLparen); err == nil {
+			args, err := p.exprList()
+			if err != nil {
+				return nil, err
+			}
 
-		args, err := p.exprList()
-		if err != nil {
-			return nil, err
-		}
+			if _, err := p.accept(itemRparen); err != nil {
+				return nil, err
+			}
 
-		if _, err := p.accept(itemRparen); err != nil {
-			return nil, err
+			return &ExprCall{
+				Name: name,
+				Args: args,
+			}, nil
+		} else {
+			e := ExprVar(name)
+			return &e, nil
 		}
-
-		return &ExprCall{
-			Name: name,
-			Args: args,
-		}, nil
 	}
 
 	if s, err := p.accept(itemNumber); err == nil {
@@ -155,6 +159,24 @@ func (p *parser) expr() (Expr, error) {
 	}
 
 	return nil, fmt.Errorf("minilustre: expected an expression, got %v", p.cur)
+}
+
+func (p *parser) expr() (Expr, error) {
+	e1, err := p.exprMember()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := p.acceptKeyword(keywordFby); err == nil {
+		e2, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		return &ExprBinOp{BinOpFby, e1, e2}, nil
+	}
+
+	return e1, nil
 }
 
 func (p *parser) assign() (*Assign, error) {

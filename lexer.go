@@ -54,16 +54,17 @@ func (t itemType) String() string {
 }
 
 const (
-	keywordIf = "if"
-	keywordLet = "let"
 	keywordAnd = "and"
 	keywordBool = "bool"
-	keywordFloat = "float"
 	keywordConst = "const"
 	keywordElse = "else"
 	keywordEnd = "end"
 	keywordFalse = "false"
+	keywordFby = "fby"
+	keywordFloat = "float"
+	keywordIf = "if"
 	keywordInt = "int"
+	keywordLet = "let"
 	keywordNode = "node"
 	keywordNot = "not"
 	keywordOr = "or"
@@ -152,7 +153,7 @@ func (l *lexer) keywordOrIdent() error {
 
 	var t itemType
 	switch s {
-	case keywordIf, keywordLet, keywordAnd, keywordBool, keywordFloat, keywordConst, keywordElse, keywordEnd, keywordFalse, keywordInt, keywordNode, keywordNot, keywordOr, keywordReturns, keywordString, keywordTel, keywordThen, keywordTrue, keywordUnit, keywordVar:
+	case keywordIf, keywordLet, keywordAnd, keywordBool, keywordFloat, keywordConst, keywordElse, keywordEnd, keywordFalse, keywordInt, keywordNode, keywordNot, keywordOr, keywordReturns, keywordString, keywordTel, keywordThen, keywordTrue, keywordUnit, keywordVar, keywordFby:
 		t = itemKeyword
 	default:
 		t = itemIdent
