@@ -112,7 +112,14 @@ func (l *lexer) string(accept func(rune) bool) (string, error) {
 }
 
 func (l *lexer) number() error {
-	return nil // TODO
+	// TODO: float
+	s, err := l.string(unicode.IsDigit)
+	if err != nil {
+		return err
+	}
+
+	l.out <- item{itemNumber, s}
+	return nil
 }
 
 func (l *lexer) quoted() error {
