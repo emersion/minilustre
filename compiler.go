@@ -54,6 +54,12 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 		return ctx.b.NewCall(f, args...), nil
 	case ExprConst:
 		switch v := e.Value.(type) {
+		case bool:
+			var i int64 = 0
+			if v {
+				i = 1
+			}
+			return constant.NewInt(types.I1, i), nil
 		case int:
 			return constant.NewInt(types.I32, int64(v)), nil
 		case string:
@@ -95,9 +101,8 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			return ctx.b.NewICmp(enum.IPredSLT, left, right), nil
 		case BinOpFby:
 			return constant.NewInt(types.I32, 0), nil // TODO
-		default:
-			panic(fmt.Sprintf("unknown binary operation %v", e.Op))
 		}
+		panic(fmt.Sprintf("unknown binary operation %v", e.Op))
 	default:
 		panic(fmt.Sprintf("unknown expression %T", e))
 	}
