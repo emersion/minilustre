@@ -183,6 +183,33 @@ func (p *parser) exprMember() (Expr, error) {
 		}
 	}
 
+	if err := p.acceptKeyword(keywordIf); err == nil {
+		cond, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		if err := p.acceptKeyword(keywordThen); err != nil {
+			return nil, err
+		}
+
+		body, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		if err := p.acceptKeyword(keywordElse); err != nil {
+			return nil, err
+		}
+
+		els, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		return &ExprIf{cond, body, els}, nil
+	}
+
 	if name, err := p.acceptItem(itemIdent); err == nil {
 		if _, err := p.acceptItem(itemLparen); err == nil {
 			args, err := p.exprList()

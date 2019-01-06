@@ -125,6 +125,14 @@ func (e ExprVar) String() string {
 	return string(e)
 }
 
+type ExprIf struct {
+	Cond, Body, Else Expr
+}
+
+func (e *ExprIf) String() string {
+	return "if " + e.Cond.String() + " then " + e.Body.String() + " else " + e.Else.String()
+}
+
 type Assign struct {
 	Dst []string
 	Body Expr
