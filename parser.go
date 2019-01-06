@@ -61,8 +61,20 @@ func (p *parser) typ() (Type, error) {
 }
 
 func (p *parser) param(params map[string]Type) (bool, error) {
-	name, err := p.accept(itemIdent)
-	if err != nil {
+	var names []string
+	for {
+		name, err := p.accept(itemIdent)
+		if err != nil {
+			break
+		}
+
+		names = append(names, name)
+
+		if _, err := p.accept(itemComma); err != nil {
+			break
+		}
+	}
+	if len(names) == 0 {
 		return false, nil
 	}
 
@@ -75,11 +87,13 @@ func (p *parser) param(params map[string]Type) (bool, error) {
 		return true, err
 	}
 
-	if _, ok := params[name]; ok {
-		return true, fmt.Errorf("minilustre: duplicate parameter name '%v'", name)
+	for _, name := range names {
+		if _, ok := params[name]; ok {
+			return true, fmt.Errorf("minilustre: duplicate parameter name '%v'", name)
+		}
+		params[name] = t
 	}
 
-	params[name] = t
 	return true, nil
 }
 
