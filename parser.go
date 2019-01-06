@@ -58,45 +58,42 @@ func (p *parser) typ() (Type, error) {
 	}
 }
 
-func (p *parser) param() (*Param, error) {
+func (p *parser) param(params map[string]Type) error {
 	name, err := p.accept(itemIdent)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if _, err := p.accept(itemColon); err != nil {
-		return nil, err
+		return err
 	}
 
 	t, err := p.typ()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Param{
-		Name: name,
-		Type: t,
-	}, nil
+	if _, ok := params[name]; ok {
+		return fmt.Errorf("minilustre: duplicate parameter name '%v'", name)
+	}
+
+	params[name] = t
+	return nil
 }
 
-func (p *parser) paramList() ([]Param, error) {
-	var l []Param
+func (p *parser) paramList() (map[string]Type, error) {
+	params := make(map[string]Type)
 	for {
-		param, err := p.param()
-		if err != nil {
+		if err := p.param(params); err != nil {
 			return nil, err
-		} else if param == nil {
-			break
 		}
-
-		l = append(l, *param)
 
 		if _, err := p.accept(itemSemi); err != nil {
 			break
 		}
 	}
 
-	return l, nil
+	return params, nil
 }
 
 func (p *parser) exprList() ([]Expr, error) {

@@ -73,34 +73,25 @@ func assignListString(assigns []Assign) string {
 	return strings.Join(l, "\n") + "\n"
 }
 
-type Param struct {
-	Name string
-	Type Type
-}
-
-func (p *Param) String() string {
-	return p.Name + ": " + p.Type.String()
-}
-
-func paramListString(params []Param) string {
-	l := make([]string, len(params))
-	for i, p := range params {
-		l[i] = p.String()
+func paramMapString(params map[string]Type) string {
+	l := make([]string, 0, len(params))
+	for name, typ := range params {
+		l = append(l, name + ": " + typ.String())
 	}
 	return strings.Join(l, "; ")
 }
 
 type Node struct {
 	Name string
-	InParams []Param
-	OutParams []Param
+	InParams map[string]Type
+	OutParams map[string]Type
 	Body []Assign
 }
 
 func (n *Node) String() string {
 	return "node " + n.Name +
-		" (" + paramListString(n.InParams) +
-		") returns (" + paramListString(n.OutParams) + ");\n" +
+		" (" + paramMapString(n.InParams) +
+		") returns (" + paramMapString(n.OutParams) + ");\n" +
 		"let\n" +
 		assignListString(n.Body) +
 		"tel\n"
