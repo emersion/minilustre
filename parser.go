@@ -280,6 +280,10 @@ func (p *parser) expr() (Expr, error) {
 			op = BinOpPlus
 		case "-":
 			op = BinOpMinus
+		case ">":
+			op = BinOpGt
+		case "<":
+			op = BinOpLt
 		default:
 			panic("unknown binary operation '" + s + "'")
 		}
