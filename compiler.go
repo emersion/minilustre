@@ -198,9 +198,11 @@ func (c *compiler) node(n *Node) error {
 	params := make([]*ir.Param, 0, len(n.InParams))
 	retTypes := make([]types.Type, 0, len(n.OutParams))
 	for name, typ := range n.InParams {
-		p := ir.NewParam(name, c.typ(typ))
-		params = append(params, p)
-		vars[name] = p
+		if typ != TypeUnit {
+			p := ir.NewParam(name, c.typ(typ))
+			params = append(params, p)
+			vars[name] = p
+		}
 	}
 	for name, typ := range n.OutParams {
 		// TODO
