@@ -19,6 +19,7 @@ type context struct {
 	b *ir.Block
 	f *ir.Func
 	vars map[string]value.Value
+	glob int
 }
 
 func (c *compiler) typ(t Type) types.Type {
@@ -35,6 +36,11 @@ func (c *compiler) typ(t Type) types.Type {
 		return types.I8Ptr
 	}
 	panic(fmt.Sprintf("unknown type %v", t))
+}
+
+func (ctx *context) freshGlobal() string {
+	ctx.glob++
+	return fmt.Sprintf("_%v_%v", ctx.f.GlobalName, ctx.glob)
 }
 
 func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
@@ -65,7 +71,7 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			return constant.NewInt(types.I32, int64(v)), nil
 		case string:
 			b := append([]byte(v), 0)
-			glob := c.m.NewGlobalDef("", constant.NewCharArray(b))
+			glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewCharArray(b))
 			glob.Immutable = true
 			glob.Linkage = enum.LinkagePrivate
 			zero := constant.NewInt(types.I64, 0)
@@ -96,8 +102,15 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			typs[i] = values[i].Type()
 		}
 
-		glob := c.m.NewGlobalDef("", constant.NewUndef(types.NewStruct(typs...)))
+		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(typs...)))
 		glob.Linkage = enum.LinkagePrivate
+
+		for i, v := range values {
+			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+			ptr.InBounds = true
+			ctx.b.NewStore(v, ptr)
+		}
+
 		return glob, nil
 	case *ExprBinOp:
 		left, err := c.expr(e.Left, ctx)
