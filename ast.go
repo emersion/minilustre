@@ -49,16 +49,29 @@ func (e *ExprCall) String() string {
 	return e.Name + "(" + strings.Join(l, ", ") + ")"
 }
 
-type ExprString string
-
-func (e ExprString) String() string {
-	return fmt.Sprintf("%q", string(e))
+type ExprConst struct {
+	Value interface{}
 }
 
-type ExprInteger int
+func (e ExprConst) Type() Type {
+	switch e.Value.(type) {
+	case interface{}:
+		return TypeUnit
+	case bool:
+		return TypeBool
+	case int:
+		return TypeInt
+	case float32:
+		return TypeFloat
+	case string:
+		return TypeString
+	default:
+		panic(fmt.Sprintf("unknown const type %T", e))
+	}
+}
 
-func (e ExprInteger) String() string {
-	return fmt.Sprintf("%d", int(e))
+func (e ExprConst) String() string {
+	return fmt.Sprintf("%#v", e.Value)
 }
 
 type BinOp int

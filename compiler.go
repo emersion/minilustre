@@ -31,13 +31,18 @@ func (c *compiler) expr(e Expr, blk *ir.Block) (value.Value, error) {
 			}
 		}
 		return blk.NewCall(f, args...), nil
-	case *ExprString:
-		b := append([]byte(*e), 0)
-		glob := c.m.NewGlobalDef("", constant.NewCharArray(b))
-		glob.Linkage = enum.LinkagePrivate
-		zero := constant.NewInt(types.I64, 0)
-		ptr := blk.NewGetElementPtr(glob, zero, zero)
-		return ptr, nil
+	case *ExprConst:
+		switch v := e.Value.(type) {
+		case string:
+			b := append([]byte(v), 0)
+			glob := c.m.NewGlobalDef("", constant.NewCharArray(b))
+			glob.Linkage = enum.LinkagePrivate
+			zero := constant.NewInt(types.I64, 0)
+			ptr := blk.NewGetElementPtr(glob, zero, zero)
+			return ptr, nil
+		default:
+			panic(fmt.Sprintf("unknown const type %T", v))
+		}
 	default:
 		panic("minilustre: unknown expression")
 	}

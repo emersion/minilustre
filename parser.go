@@ -181,13 +181,17 @@ func (p *parser) exprMember() (Expr, error) {
 			return nil, err
 		}
 
-		e := ExprInteger(i)
-		return &e, nil
+		return &ExprConst{i}, nil
+	}
+
+	if err := p.acceptKeyword(keywordTrue); err == nil {
+		return &ExprConst{true}, nil
+	} else if err := p.acceptKeyword(keywordFalse); err == nil {
+		return &ExprConst{false}, nil
 	}
 
 	if s, err := p.acceptItem(itemString); err == nil {
-		e := ExprString(s)
-		return &e, nil
+		return &ExprConst{s}, nil
 	}
 
 	return nil, fmt.Errorf("minilustre: expected an expression, got %v", p.cur)
