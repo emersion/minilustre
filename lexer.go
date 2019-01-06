@@ -47,10 +47,12 @@ func (t itemType) String() string {
 		return "Colon"
 	case itemSemi:
 		return "Semi"
+	case itemComma:
+		return "Comma"
 	case itemEq:
 		return "Eq"
 	}
-	panic("not reached")
+	panic(fmt.Sprintf("unknown lexer item %d", int(t)))
 }
 
 const (

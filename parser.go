@@ -176,6 +176,25 @@ func (p *parser) expr() (Expr, error) {
 		return &ExprBinOp{BinOpFby, e1, e2}, nil
 	}
 
+	if s, err := p.accept(itemOp); err == nil {
+		e2, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		var op BinOp
+		switch s {
+		case "+":
+			op = BinOpPlus
+		case "-":
+			op = BinOpMinus
+		default:
+			panic("unknown binary operation '" + s + "'")
+		}
+
+		return &ExprBinOp{op, e1, e2}, nil
+	}
+
 	return e1, nil
 }
 
