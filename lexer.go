@@ -140,8 +140,12 @@ func (l *lexer) quoted() error {
 	return nil
 }
 
+func isIdent(r rune) bool {
+	return r == '_' || unicode.IsLetter(r)
+}
+
 func (l *lexer) keywordOrIdent() error {
-	s, err := l.string(unicode.IsLetter)
+	s, err := l.string(isIdent)
 	if err != nil {
 		return err
 	}
@@ -183,7 +187,7 @@ func (l *lexer) next() (bool, error) {
 	case '"':
 		l.in.UnreadRune()
 		return true, l.quoted()
-	case '+', '-':
+	case '+', '-', '<', '>':
 		l.out <- item{itemOp, string(r)}
 	case '\n', '\t', ' ', '\r':
 		// No-op
@@ -191,7 +195,7 @@ func (l *lexer) next() (bool, error) {
 		if unicode.IsDigit(r) {
 			l.in.UnreadRune()
 			return true, l.number()
-		} else if unicode.IsLetter(r) {
+		} else if isIdent(r) {
 			l.in.UnreadRune()
 			return true, l.keywordOrIdent()
 		} else {
