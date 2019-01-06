@@ -17,6 +17,7 @@ type compiler struct {
 
 type context struct {
 	b *ir.Block
+	f *ir.Func
 	vars map[string]value.Value
 }
 
@@ -65,6 +66,7 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 		case string:
 			b := append([]byte(v), 0)
 			glob := c.m.NewGlobalDef("", constant.NewCharArray(b))
+			glob.Immutable = true
 			glob.Linkage = enum.LinkagePrivate
 			zero := constant.NewInt(types.I64, 0)
 			ptr := ctx.b.NewGetElementPtr(glob, zero, zero)
@@ -79,6 +81,21 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			return nil, fmt.Errorf("minilustre: referring to undefined variable '%v'", string(e))
 		}
 		return v, nil
+	case ExprTuple:
+		values := make([]value.Value, len(e))
+		typs := make([]types.Type, len(e))
+		for i, ee := range e {
+			var err error
+			values[i], err = c.expr(ee, ctx)
+			if err != nil {
+				return nil, err
+			}
+			typs[i] = values[i].Type()
+		}
+
+		glob := c.m.NewGlobalDef("", constant.NewUndef(types.NewStruct(typs...)))
+		glob.Linkage = enum.LinkagePrivate
+		return glob, nil
 	case *ExprBinOp:
 		left, err := c.expr(e.Left, ctx)
 		if err != nil {
@@ -103,6 +120,23 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			return constant.NewInt(types.I32, 0), nil // TODO
 		}
 		panic(fmt.Sprintf("unknown binary operation %v", e.Op))
+	case *ExprIf:
+		cond, err := c.expr(e.Cond, ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := c.expr(e.Body, ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		els, err := c.expr(e.Else, ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return ctx.b.NewSelect(cond, body, els), nil
 	default:
 		panic(fmt.Sprintf("unknown expression %T", e))
 	}
@@ -115,7 +149,7 @@ func (c *compiler) assign(assign *Assign, ctx *context) error {
 	}
 
 	if _, ok := ctx.vars[assign.Dst[0]]; ok {
-		return fmt.Errorf("minilustre: cannot write variable '%v' twice", assign.Dst[0])
+		//return fmt.Errorf("minilustre: cannot write variable '%v' twice", assign.Dst[0])
 	}
 
 	ctx.vars[assign.Dst[0]] = v
@@ -123,18 +157,22 @@ func (c *compiler) assign(assign *Assign, ctx *context) error {
 }
 
 func (c *compiler) node(n *Node) error {
-	vars := make(map[string]value.Value, len(n.InParams))
+	vars := make(map[string]value.Value, len(n.InParams) + len(n.OutParams))
 	params := make([]*ir.Param, 0, len(n.InParams))
 	for name, typ := range n.InParams {
 		p := ir.NewParam(name, c.typ(typ))
 		params = append(params, p)
 		vars[name] = p
 	}
+	for name, typ := range n.OutParams {
+		// TODO
+		vars[name] = constant.NewUndef(c.typ(typ))
+	}
 
 	f := c.m.NewFunc(n.Name, types.Void, params...)
 	entry := f.NewBlock("")
 
-	ctx := context{entry, vars}
+	ctx := context{b: entry, f: f, vars: vars}
 	for _, assign := range n.Body {
 		if err := c.assign(&assign, &ctx); err != nil {
 			return fmt.Errorf("failed to compile node '%v': %v", n.Name, err)
