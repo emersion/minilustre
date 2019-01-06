@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 type parser struct {
@@ -29,7 +30,7 @@ func (p *parser) accept(t itemType) (string, error) {
 func (p *parser) acceptKeyword(keyword string) error {
 	s, err := p.accept(itemKeyword)
 	if err != nil {
-		return err
+		return fmt.Errorf("minilustre: expected keyword %v, got %v", keyword, p.cur)
 	} else if s != keyword {
 		return fmt.Errorf("minilustre: expected keyword %v, got %v", keyword, s)
 	}
@@ -137,6 +138,17 @@ func (p *parser) expr() (Expr, error) {
 		}, nil
 	}
 
+	if s, err := p.accept(itemNumber); err == nil {
+		// TODO: float
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return nil, err
+		}
+
+		e := ExprInteger(i)
+		return &e, nil
+	}
+
 	if s, err := p.accept(itemString); err == nil {
 		e := ExprString(s)
 		return &e, nil
@@ -149,7 +161,7 @@ func (p *parser) assign() (*Assign, error) {
 	// TODO: deconstructing
 	dst, err := p.accept(itemIdent)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	if _, err := p.accept(itemEq); err != nil {
@@ -170,8 +182,10 @@ func (p *parser) assign() (*Assign, error) {
 func (p *parser) assignList() ([]Assign, error) {
 	var l []Assign
 	for {
-		assign, _ := p.assign()
-		if assign == nil {
+		assign, err := p.assign()
+		if err != nil {
+			return nil, err
+		} else if assign == nil {
 			break
 		}
 

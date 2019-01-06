@@ -52,8 +52,13 @@ func (e *ExprCall) String() string {
 type ExprString string
 
 func (e ExprString) String() string {
-	// TODO: quoting
-	return "\"" + string(e) + "\""
+	return fmt.Sprintf("%q", string(e))
+}
+
+type ExprInteger int
+
+func (e ExprInteger) String() string {
+	return fmt.Sprintf("%d", int(e))
 }
 
 type Assign struct {
