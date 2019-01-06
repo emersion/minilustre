@@ -74,6 +74,16 @@ func (e ExprConst) String() string {
 	return fmt.Sprintf("%#v", e.Value)
 }
 
+type ExprTuple []Expr
+
+func (et ExprTuple) String() string {
+	l := make([]string, len(et))
+	for i, e := range et {
+		l[i] = e.String()
+	}
+	return "(" + strings.Join(l, ", ") + ")"
+}
+
 type BinOp int
 
 const (
@@ -116,12 +126,16 @@ func (e ExprVar) String() string {
 }
 
 type Assign struct {
-	Dst string
+	Dst []string
 	Body Expr
 }
 
 func (a *Assign) String() string {
-	return a.Dst + " = " + a.Body.String()
+	dst := strings.Join(a.Dst, ", ")
+	if len(a.Dst) > 1 {
+		dst = "(" + dst + ")"
+	}
+	return dst + " = " + a.Body.String()
 }
 
 func assignListString(assigns []Assign) string {

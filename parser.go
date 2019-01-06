@@ -153,6 +153,36 @@ func (p *parser) exprList() ([]Expr, error) {
 }
 
 func (p *parser) exprMember() (Expr, error) {
+	if _, err := p.acceptItem(itemLparen); err == nil {
+		e, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := p.acceptItem(itemComma); err == nil {
+			l := []Expr{e}
+			for {
+				e, err := p.expr()
+				if err != nil {
+					return nil, err
+				}
+				l = append(l, e)
+
+				if _, err := p.acceptItem(itemComma); err != nil {
+					break
+				}
+			}
+
+			if _, err := p.acceptItem(itemRparen); err != nil {
+				return nil, err
+			}
+
+			return ExprTuple(l), nil
+		} else {
+			return e, nil
+		}
+	}
+
 	if name, err := p.acceptItem(itemIdent); err == nil {
 		if _, err := p.acceptItem(itemLparen); err == nil {
 			args, err := p.exprList()
@@ -169,8 +199,7 @@ func (p *parser) exprMember() (Expr, error) {
 				Args: args,
 			}, nil
 		} else {
-			e := ExprVar(name)
-			return &e, nil
+			return ExprVar(name), nil
 		}
 	}
 
@@ -181,17 +210,17 @@ func (p *parser) exprMember() (Expr, error) {
 			return nil, err
 		}
 
-		return &ExprConst{i}, nil
+		return ExprConst{i}, nil
 	}
 
 	if err := p.acceptKeyword(keywordTrue); err == nil {
-		return &ExprConst{true}, nil
+		return ExprConst{true}, nil
 	} else if err := p.acceptKeyword(keywordFalse); err == nil {
-		return &ExprConst{false}, nil
+		return ExprConst{false}, nil
 	}
 
 	if s, err := p.acceptItem(itemString); err == nil {
-		return &ExprConst{s}, nil
+		return ExprConst{s}, nil
 	}
 
 	return nil, fmt.Errorf("minilustre: expected an expression, got %v", p.cur)
@@ -235,10 +264,29 @@ func (p *parser) expr() (Expr, error) {
 }
 
 func (p *parser) assign() (*Assign, error) {
-	// TODO: deconstructing
-	dst, err := p.acceptItem(itemIdent)
-	if err != nil {
-		return nil, nil
+	var dst []string
+	if _, err := p.acceptItem(itemLparen); err == nil {
+		for {
+			name, err := p.acceptItem(itemIdent)
+			if err != nil {
+				return nil, err
+			}
+			dst = append(dst, name)
+
+			if _, err := p.acceptItem(itemComma); err != nil {
+				break
+			}
+		}
+
+		if _, err := p.acceptItem(itemRparen); err != nil {
+			return nil, err
+		}
+	} else {
+		name, err := p.acceptItem(itemIdent)
+		if err != nil {
+			return nil, nil
+		}
+		dst = []string{name}
 	}
 
 	if _, err := p.acceptItem(itemEq); err != nil {

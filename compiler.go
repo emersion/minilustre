@@ -31,7 +31,7 @@ func (c *compiler) expr(e Expr, blk *ir.Block) (value.Value, error) {
 			}
 		}
 		return blk.NewCall(f, args...), nil
-	case *ExprConst:
+	case ExprConst:
 		switch v := e.Value.(type) {
 		case string:
 			b := append([]byte(v), 0)
