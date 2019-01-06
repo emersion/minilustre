@@ -230,7 +230,16 @@ func (c *compiler) node(n *Node) error {
 		}
 	}
 
-	entry.NewRet(nil)
+	var ret value.Value
+	if len(n.OutParams) == 1 {
+		var name string
+		for name = range n.OutParams {}
+		ret = vars[name]
+	} else {
+		// TODO
+	}
+
+	entry.NewRet(ret)
 
 	c.funcs[n.Name] = f
 	return nil
