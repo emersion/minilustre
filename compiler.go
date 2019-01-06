@@ -78,8 +78,11 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 		v, ok := ctx.vars[string(e)]
 		if !ok {
 			//panic(fmt.Sprintf("referring to undefined variable '%v'", string(e)))
-			return nil, fmt.Errorf("minilustre: referring to undefined variable '%v'", string(e))
+			return nil, fmt.Errorf("minilustre: referring to unknown variable '%v'", string(e))
 		}
+		// if _, ok := v.(*constant.Undef); ok {
+		// 	return nil, fmt.Errorf("minilustre: referring to undefined variable '%v'", string(e))
+		// }
 		return v, nil
 	case ExprTuple:
 		values := make([]value.Value, len(e))
@@ -117,7 +120,7 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 		case BinOpLt:
 			return ctx.b.NewICmp(enum.IPredSLT, left, right), nil
 		case BinOpFby:
-			return constant.NewInt(types.I32, 0), nil // TODO
+			return left, nil // TODO
 		}
 		panic(fmt.Sprintf("unknown binary operation %v", e.Op))
 	case *ExprIf:
@@ -142,23 +145,45 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 	}
 }
 
+func (ctx *context) setVar(name string, v value.Value) error {
+	if v, ok := ctx.vars[name]; ok {
+		if _, ok := v.(*constant.Undef); !ok {
+			return fmt.Errorf("minilustre: cannot write variable '%v' twice", name)
+		}
+	}
+
+	ctx.vars[name] = v
+	return nil
+}
+
 func (c *compiler) assign(assign *Assign, ctx *context) error {
 	v, err := c.expr(assign.Body, ctx)
 	if err != nil {
 		return err
 	}
 
-	if _, ok := ctx.vars[assign.Dst[0]]; ok {
-		//return fmt.Errorf("minilustre: cannot write variable '%v' twice", assign.Dst[0])
-	}
+	if len(assign.Dst) == 1 {
+		return ctx.setVar(assign.Dst[0], v)
+	} else if len(assign.Dst) > 1 {
+		for i, dst := range assign.Dst {
+			ptr := ctx.b.NewGetElementPtr(v, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+			ptr.InBounds = true
+			vv := ctx.b.NewLoad(ptr)
+			if err := ctx.setVar(dst, vv); err != nil {
+				return err
+			}
+		}
 
-	ctx.vars[assign.Dst[0]] = v
-	return nil
+		return nil
+	} else {
+		panic("cannot assign to nothing")
+	}
 }
 
 func (c *compiler) node(n *Node) error {
-	vars := make(map[string]value.Value, len(n.InParams) + len(n.OutParams))
+	vars := make(map[string]value.Value, len(n.InParams) + len(n.OutParams) + len(n.LocalParams))
 	params := make([]*ir.Param, 0, len(n.InParams))
+	retTypes := make([]types.Type, 0, len(n.OutParams))
 	for name, typ := range n.InParams {
 		p := ir.NewParam(name, c.typ(typ))
 		params = append(params, p)
@@ -167,9 +192,20 @@ func (c *compiler) node(n *Node) error {
 	for name, typ := range n.OutParams {
 		// TODO
 		vars[name] = constant.NewUndef(c.typ(typ))
+		retTypes = append(retTypes, vars[name].Type())
+	}
+	for name, typ := range n.LocalParams {
+		vars[name] = constant.NewUndef(c.typ(typ))
 	}
 
-	f := c.m.NewFunc(n.Name, types.Void, params...)
+	var retType types.Type = types.Void
+	if len(retTypes) == 1 {
+		retType = retTypes[0]
+	} else {
+		retType = types.NewPointer(types.NewStruct(retTypes...))
+	}
+
+	f := c.m.NewFunc(n.Name, retType, params...)
 	entry := f.NewBlock("")
 
 	ctx := context{b: entry, f: f, vars: vars}
