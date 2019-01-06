@@ -131,6 +131,7 @@ type Node struct {
 	Name string
 	InParams map[string]Type
 	OutParams map[string]Type
+	LocalParams map[string]Type
 	Body []Assign
 }
 

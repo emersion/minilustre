@@ -314,11 +314,13 @@ func (p *parser) node() (*Node, error) {
 		return nil, err
 	}
 
+	var localParams map[string]Type
 	if err := p.acceptKeyword(keywordVar); err == nil {
-		panic("TODO")
+		localParams, err = p.paramList()
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	// TODO: local params
 
 	if err := p.acceptKeyword(keywordLet); err != nil {
 		return nil, err
@@ -335,6 +337,7 @@ func (p *parser) node() (*Node, error) {
 		Name: name,
 		InParams: inParams,
 		OutParams: outParams,
+		LocalParams: localParams,
 		Body: body,
 	}, nil
 }
