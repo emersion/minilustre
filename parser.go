@@ -12,34 +12,53 @@ type parser struct {
 	cur *item
 }
 
-func (p *parser) accept(t itemType) (string, error) {
+func (p *parser) peek() item {
 	if p.cur == nil {
 		it := <-p.in
 		p.cur = &it
 	}
 
-	if p.cur.typ != t {
-		return "", fmt.Errorf("minilustre: expected token %v, got %v", t, p.cur)
-	}
+	return *p.cur
+}
 
+func (p *parser) accept() {
+	if p.cur == nil {
+		panic("accepted a nil item")
+	}
 	// fmt.Println(p.cur)
-	s := p.cur.value
 	p.cur = nil
+}
+
+func (p *parser) peekItem(t itemType) (string, error) {
+	it := p.peek()
+	if it.typ != t {
+		return "", fmt.Errorf("minilustre: expected token %v, got %v", t, it)
+	}
+	return p.cur.value, nil
+}
+
+func (p *parser) acceptItem(t itemType) (string, error) {
+	s, err := p.peekItem(t)
+	if err != nil {
+		return "", err
+	}
+	p.accept()
 	return s, nil
 }
 
 func (p *parser) acceptKeyword(keyword string) error {
-	s, err := p.accept(itemKeyword)
+	s, err := p.peekItem(itemKeyword)
 	if err != nil {
 		return fmt.Errorf("minilustre: expected keyword %v, got %v", keyword, p.cur)
 	} else if s != keyword {
 		return fmt.Errorf("minilustre: expected keyword %v, got %v", keyword, s)
 	}
+	p.accept()
 	return nil
 }
 
 func (p *parser) typ() (Type, error) {
-	s, err := p.accept(itemKeyword)
+	s, err := p.acceptItem(itemKeyword)
 	if err != nil {
 		return 0, err
 	}
@@ -63,14 +82,13 @@ func (p *parser) typ() (Type, error) {
 func (p *parser) param(params map[string]Type) (bool, error) {
 	var names []string
 	for {
-		name, err := p.accept(itemIdent)
+		name, err := p.acceptItem(itemIdent)
 		if err != nil {
 			break
 		}
-
 		names = append(names, name)
 
-		if _, err := p.accept(itemComma); err != nil {
+		if _, err := p.acceptItem(itemComma); err != nil {
 			break
 		}
 	}
@@ -78,7 +96,7 @@ func (p *parser) param(params map[string]Type) (bool, error) {
 		return false, nil
 	}
 
-	if _, err := p.accept(itemColon); err != nil {
+	if _, err := p.acceptItem(itemColon); err != nil {
 		return true, err
 	}
 
@@ -106,7 +124,7 @@ func (p *parser) paramList() (map[string]Type, error) {
 			break
 		}
 
-		if _, err := p.accept(itemSemi); err != nil {
+		if _, err := p.acceptItem(itemSemi); err != nil {
 			break
 		}
 	}
@@ -126,7 +144,7 @@ func (p *parser) exprList() ([]Expr, error) {
 
 		l = append(l, e)
 
-		if _, err := p.accept(itemComma); err != nil {
+		if _, err := p.acceptItem(itemComma); err != nil {
 			break
 		}
 	}
@@ -135,14 +153,14 @@ func (p *parser) exprList() ([]Expr, error) {
 }
 
 func (p *parser) exprMember() (Expr, error) {
-	if name, err := p.accept(itemIdent); err == nil {
-		if _, err := p.accept(itemLparen); err == nil {
+	if name, err := p.acceptItem(itemIdent); err == nil {
+		if _, err := p.acceptItem(itemLparen); err == nil {
 			args, err := p.exprList()
 			if err != nil {
 				return nil, err
 			}
 
-			if _, err := p.accept(itemRparen); err != nil {
+			if _, err := p.acceptItem(itemRparen); err != nil {
 				return nil, err
 			}
 
@@ -156,7 +174,7 @@ func (p *parser) exprMember() (Expr, error) {
 		}
 	}
 
-	if s, err := p.accept(itemNumber); err == nil {
+	if s, err := p.acceptItem(itemNumber); err == nil {
 		// TODO: float
 		i, err := strconv.Atoi(s)
 		if err != nil {
@@ -167,7 +185,7 @@ func (p *parser) exprMember() (Expr, error) {
 		return &e, nil
 	}
 
-	if s, err := p.accept(itemString); err == nil {
+	if s, err := p.acceptItem(itemString); err == nil {
 		e := ExprString(s)
 		return &e, nil
 	}
@@ -190,7 +208,7 @@ func (p *parser) expr() (Expr, error) {
 		return &ExprBinOp{BinOpFby, e1, e2}, nil
 	}
 
-	if s, err := p.accept(itemOp); err == nil {
+	if s, err := p.acceptItem(itemOp); err == nil {
 		e2, err := p.expr()
 		if err != nil {
 			return nil, err
@@ -214,12 +232,12 @@ func (p *parser) expr() (Expr, error) {
 
 func (p *parser) assign() (*Assign, error) {
 	// TODO: deconstructing
-	dst, err := p.accept(itemIdent)
+	dst, err := p.acceptItem(itemIdent)
 	if err != nil {
 		return nil, nil
 	}
 
-	if _, err := p.accept(itemEq); err != nil {
+	if _, err := p.acceptItem(itemEq); err != nil {
 		return nil, err
 	}
 
@@ -246,7 +264,7 @@ func (p *parser) assignList() ([]Assign, error) {
 
 		l = append(l, *assign)
 
-		if _, err := p.accept(itemSemi); err != nil {
+		if _, err := p.acceptItem(itemSemi); err != nil {
 			break
 		}
 	}
@@ -259,19 +277,19 @@ func (p *parser) node() (*Node, error) {
 		return nil, err
 	}
 
-	name, err := p.accept(itemIdent)
+	name, err := p.acceptItem(itemIdent)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := p.accept(itemLparen); err != nil {
+	if _, err := p.acceptItem(itemLparen); err != nil {
 		return nil, err
 	}
 	inParams, err := p.paramList()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.accept(itemRparen); err != nil {
+	if _, err := p.acceptItem(itemRparen); err != nil {
 		return nil, err
 	}
 
@@ -279,7 +297,7 @@ func (p *parser) node() (*Node, error) {
 		return nil, err
 	}
 
-	if _, err := p.accept(itemLparen); err != nil {
+	if _, err := p.acceptItem(itemLparen); err != nil {
 		return nil, err
 	}
 	outParams, err := p.paramList()
@@ -288,12 +306,16 @@ func (p *parser) node() (*Node, error) {
 	} else if len(outParams) == 0 {
 		return nil, fmt.Errorf("minilustre: '%v' doesn't have any out parameter")
 	}
-	if _, err := p.accept(itemRparen); err != nil {
+	if _, err := p.acceptItem(itemRparen); err != nil {
 		return nil, err
 	}
 
-	if _, err := p.accept(itemSemi); err != nil {
+	if _, err := p.acceptItem(itemSemi); err != nil {
 		return nil, err
+	}
+
+	if err := p.acceptKeyword(keywordVar); err == nil {
+		panic("TODO")
 	}
 
 	// TODO: local params
@@ -327,7 +349,7 @@ func (p *parser) parse() (*File, error) {
 
 		f.Nodes = append(f.Nodes, *n)
 
-		if _, err := p.accept(itemEOF); err == nil {
+		if _, err := p.acceptItem(itemEOF); err == nil {
 			break
 		}
 	}
