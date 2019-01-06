@@ -144,7 +144,7 @@ func (l *lexer) quoted() error {
 }
 
 func isIdent(r rune) bool {
-	return r == '_' || unicode.IsLetter(r)
+	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 func (l *lexer) keywordOrIdent() error {
