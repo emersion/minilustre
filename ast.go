@@ -111,7 +111,7 @@ func (op BinOp) String() string {
 }
 
 type ExprBinOp struct {
-	Op BinOp
+	Op          BinOp
 	Left, Right Expr
 }
 
@@ -134,7 +134,7 @@ func (e *ExprIf) String() string {
 }
 
 type Assign struct {
-	Dst []string
+	Dst  []string
 	Body Expr
 }
 
@@ -157,17 +157,17 @@ func assignListString(assigns []Assign) string {
 func paramMapString(params map[string]Type) string {
 	l := make([]string, 0, len(params))
 	for name, typ := range params {
-		l = append(l, name + ": " + typ.String())
+		l = append(l, name+": "+typ.String())
 	}
 	return strings.Join(l, "; ")
 }
 
 type Node struct {
-	Name string
-	InParams map[string]Type
-	OutParams map[string]Type
+	Name        string
+	InParams    map[string]Type
+	OutParams   map[string]Type
 	LocalParams map[string]Type
-	Body []Assign
+	Body        []Assign
 }
 
 func (n *Node) String() string {

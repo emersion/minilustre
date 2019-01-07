@@ -11,13 +11,13 @@ import (
 )
 
 type compiler struct {
-	m *ir.Module
+	m     *ir.Module
 	funcs map[string]*ir.Func
 }
 
 type context struct {
-	b *ir.Block
-	f *ir.Func
+	b    *ir.Block
+	f    *ir.Func
 	vars map[string]value.Value
 	glob int
 }
@@ -195,7 +195,7 @@ func (c *compiler) assign(assign *Assign, ctx *context) error {
 }
 
 func (c *compiler) node(n *Node) error {
-	vars := make(map[string]value.Value, len(n.InParams) + len(n.OutParams) + len(n.LocalParams))
+	vars := make(map[string]value.Value, len(n.InParams)+len(n.OutParams)+len(n.LocalParams))
 	params := make([]*ir.Param, 0, len(n.InParams))
 	retTypes := make([]types.Type, 0, len(n.OutParams))
 	for name, typ := range n.InParams {
@@ -234,7 +234,8 @@ func (c *compiler) node(n *Node) error {
 	var ret value.Value
 	if len(n.OutParams) == 1 {
 		var name string
-		for name = range n.OutParams {}
+		for name = range n.OutParams {
+		}
 		ret = vars[name]
 	} else {
 		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(retTypes...)))
