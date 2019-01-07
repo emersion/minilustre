@@ -1,5 +1,6 @@
 CLANG ?= clang
 TARGETS = pendulum simple sujet tutorial
+CFLAGS ?= -Wall -Wextra -Wno-unused-parameter
 
 all: $(TARGETS)
 
@@ -7,13 +8,13 @@ all: $(TARGETS)
 	go run ../cmd/minilustre <$^ >$@
 
 %.o: %.ll
-	$(CLANG) -c -o $@ $^
+	$(CLANG) $(CFLAGS) -c -o $@ $^
 
 stdlib.o: stdlib.c
-	$(CC) -c -o $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 %: %.o %-main.o stdlib.o
-	$(CC) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 .PHONY: clean
 clean:
