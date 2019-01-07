@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"unicode"
 	"strings"
+	"unicode"
 )
 
 type itemType int
@@ -56,31 +56,31 @@ func (t itemType) String() string {
 }
 
 const (
-	keywordAnd = "and"
-	keywordBool = "bool"
-	keywordConst = "const"
-	keywordElse = "else"
-	keywordEnd = "end"
-	keywordFalse = "false"
-	keywordFby = "fby"
-	keywordFloat = "float"
-	keywordIf = "if"
-	keywordInt = "int"
-	keywordLet = "let"
-	keywordNode = "node"
-	keywordNot = "not"
-	keywordOr = "or"
+	keywordAnd     = "and"
+	keywordBool    = "bool"
+	keywordConst   = "const"
+	keywordElse    = "else"
+	keywordEnd     = "end"
+	keywordFalse   = "false"
+	keywordFby     = "fby"
+	keywordFloat   = "float"
+	keywordIf      = "if"
+	keywordInt     = "int"
+	keywordLet     = "let"
+	keywordNode    = "node"
+	keywordNot     = "not"
+	keywordOr      = "or"
 	keywordReturns = "returns"
-	keywordString = "string"
-	keywordTel = "tel"
-	keywordThen = "then"
-	keywordTrue = "true"
-	keywordUnit = "unit"
-	keywordVar = "var"
+	keywordString  = "string"
+	keywordTel     = "tel"
+	keywordThen    = "then"
+	keywordTrue    = "true"
+	keywordUnit    = "unit"
+	keywordVar     = "var"
 )
 
 type item struct {
-	typ itemType
+	typ   itemType
 	value string
 }
 
@@ -89,14 +89,40 @@ func (it *item) String() string {
 }
 
 type lexer struct {
-	in *bufio.Reader
+	in  *bufio.Reader
 	out chan<- item
+	// Current position in the input stream.
+	pos int64
+	// Size of last rune read, used to unread rune.
+	lastRuneSize int
+}
+
+func (l *lexer) readRune() (r rune, size int, err error) {
+	r, size, err = l.in.ReadRune()
+	l.pos += int64(size)
+	l.lastRuneSize = size
+	return r, size, err
+}
+
+func (l *lexer) unreadRune() error {
+	err := l.in.UnreadRune()
+	if l.lastRuneSize > 0 {
+		l.pos -= int64(l.lastRuneSize)
+	}
+	l.lastRuneSize = -1
+	return err
+}
+
+func (l *lexer) readString(delim byte) (string, error) {
+	s, err := l.in.ReadString(delim)
+	l.lastRuneSize = -1
+	return s, err
 }
 
 func (l *lexer) string(accept func(rune) bool) (string, error) {
 	var b strings.Builder
 	for {
-		r, _, err := l.in.ReadRune()
+		r, _, err := l.readRune()
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -104,7 +130,7 @@ func (l *lexer) string(accept func(rune) bool) (string, error) {
 		}
 
 		if !accept(r) {
-			l.in.UnreadRune()
+			l.unreadRune()
 			break
 		}
 
@@ -126,20 +152,20 @@ func (l *lexer) number() error {
 }
 
 func (l *lexer) quoted() error {
-	r, _, err := l.in.ReadRune()
+	r, _, err := l.readRune()
 	if err != nil {
 		return err
 	} else if r != '"' {
-		return fmt.Errorf("minilustre: expected lquote")
+		return fmt.Errorf("minilustre: expected lquote at offset %v", l.pos)
 	}
 
 	// TODO: escape support
-	s, err := l.in.ReadString('"')
+	s, err := l.readString('"')
 	if err != nil {
 		return err
 	}
 
-	l.out <- item{itemString, s[:len(s) - 1]}
+	l.out <- item{itemString, s[:len(s)-1]}
 	return nil
 }
 
@@ -166,7 +192,7 @@ func (l *lexer) keywordOrIdent() error {
 }
 
 func (l *lexer) next() (bool, error) {
-	r, _, err := l.in.ReadRune()
+	r, _, err := l.readRune()
 	if err == io.EOF {
 		l.out <- item{itemEOF, ""}
 		return false, nil
@@ -188,7 +214,7 @@ func (l *lexer) next() (bool, error) {
 	case '=':
 		l.out <- item{itemEq, string(r)}
 	case '"':
-		l.in.UnreadRune()
+		l.unreadRune()
 		return true, l.quoted()
 	case '+', '-', '<', '>':
 		l.out <- item{itemOp, string(r)}
@@ -196,13 +222,13 @@ func (l *lexer) next() (bool, error) {
 		// No-op
 	default:
 		if unicode.IsDigit(r) {
-			l.in.UnreadRune()
+			l.unreadRune()
 			return true, l.number()
 		} else if isIdent(r) {
-			l.in.UnreadRune()
+			l.unreadRune()
 			return true, l.keywordOrIdent()
 		} else {
-			return true, fmt.Errorf("minilustre: unexpected character '%c'", r)
+			return true, fmt.Errorf("minilustre: unexpected character '%c' at offset %v", r, l.pos)
 		}
 	}
 
@@ -225,7 +251,7 @@ func Lex(r io.Reader) error {
 	ch := make(chan item, 2)
 	done := make(chan error, 1)
 
-	l := lexer{bufio.NewReader(r), ch}
+	l := lexer{in: bufio.NewReader(r), out: ch}
 	go func() {
 		done <- l.lex()
 	}()
