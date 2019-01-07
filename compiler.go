@@ -106,7 +106,7 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 		glob.Linkage = enum.LinkagePrivate
 
 		for i, v := range values {
-			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
 			ptr.InBounds = true
 			ctx.b.NewStore(v, ptr)
 		}
@@ -179,7 +179,7 @@ func (c *compiler) assign(assign *Assign, ctx *context) error {
 		return ctx.setVar(assign.Dst[0], v)
 	} else if len(assign.Dst) > 1 {
 		for i, dst := range assign.Dst {
-			ptr := ctx.b.NewGetElementPtr(v, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+			ptr := ctx.b.NewGetElementPtr(v, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
 			ptr.InBounds = true
 			vv := ctx.b.NewLoad(ptr)
 			if err := ctx.setVar(dst, vv); err != nil {
