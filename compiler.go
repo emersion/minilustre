@@ -102,17 +102,14 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			typs[i] = values[i].Type()
 		}
 
-		// TODO: maybe don't use globals for tuples
-		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(typs...)))
-		glob.Linkage = enum.LinkagePrivate
-
+		s := ctx.b.NewAlloca(types.NewStruct(typs...))
 		for i, v := range values {
-			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
+			ptr := ctx.b.NewGetElementPtr(s, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
 			ptr.InBounds = true
 			ctx.b.NewStore(v, ptr)
 		}
 
-		return glob, nil
+		return s, nil
 	case *ExprBinOp:
 		left, err := c.expr(e.Left, ctx)
 		if err != nil {
@@ -198,17 +195,23 @@ func (c *compiler) node(n *Node) error {
 	vars := make(map[string]value.Value, len(n.InParams)+len(n.OutParams)+len(n.LocalParams))
 	params := make([]*ir.Param, 0, len(n.InParams))
 	retTypes := make([]types.Type, 0, len(n.OutParams))
+	retNames := make([]string, 0, len(n.OutParams))
 	for name, typ := range n.InParams {
 		if typ != TypeUnit {
 			p := ir.NewParam(name, c.typ(typ))
 			params = append(params, p)
 			vars[name] = p
+		} else {
+			vars[name] = constant.NewUndef(c.typ(typ))
 		}
 	}
 	for name, typ := range n.OutParams {
 		// TODO
 		vars[name] = constant.NewUndef(c.typ(typ))
-		retTypes = append(retTypes, vars[name].Type())
+		if typ != TypeUnit {
+			retTypes = append(retTypes, vars[name].Type())
+			retNames = append(retNames, name)
+		}
 	}
 	for name, typ := range n.LocalParams {
 		vars[name] = constant.NewUndef(c.typ(typ))
@@ -217,7 +220,7 @@ func (c *compiler) node(n *Node) error {
 	var retType types.Type = types.Void
 	if len(retTypes) == 1 {
 		retType = retTypes[0]
-	} else {
+	} else if len(retTypes) > 1 {
 		retType = types.NewPointer(types.NewStruct(retTypes...))
 	}
 
@@ -232,21 +235,16 @@ func (c *compiler) node(n *Node) error {
 	}
 
 	var ret value.Value
-	if len(n.OutParams) == 1 {
-		var name string
-		for name = range n.OutParams {
-		}
-		ret = vars[name]
-	} else {
-		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(retTypes...)))
+	if len(retTypes) == 1 {
+		ret = vars[retNames[0]]
+	} else if len(retTypes) > 1 {
+		glob := c.m.NewGlobalDef(f.GlobalName + "_ret", constant.NewUndef(types.NewStruct(retTypes...)))
 		glob.Linkage = enum.LinkagePrivate
 
-		i := 0
-		for name := range n.OutParams {
+		for i, name := range retNames {
 			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
 			ptr.InBounds = true
 			ctx.b.NewStore(vars[name], ptr)
-			i++
 		}
 
 		ret = glob
