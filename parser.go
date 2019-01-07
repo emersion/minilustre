@@ -8,7 +8,7 @@ import (
 )
 
 type parser struct {
-	in <-chan item
+	in  <-chan item
 	cur *item
 }
 
@@ -330,7 +330,7 @@ func (p *parser) assign() (*Assign, error) {
 	}
 
 	return &Assign{
-		Dst: dst,
+		Dst:  dst,
 		Body: expr,
 	}, nil
 }
@@ -387,7 +387,7 @@ func (p *parser) node() (*Node, error) {
 	if err != nil {
 		return nil, err
 	} else if len(outParams) == 0 {
-		return nil, fmt.Errorf("minilustre: '%v' doesn't have any out parameter")
+		return nil, fmt.Errorf("minilustre: '%v' doesn't have any out parameter", name)
 	}
 	if _, err := p.acceptItem(itemRparen); err != nil {
 		return nil, err
@@ -417,11 +417,11 @@ func (p *parser) node() (*Node, error) {
 	}
 
 	return &Node{
-		Name: name,
-		InParams: inParams,
-		OutParams: outParams,
+		Name:        name,
+		InParams:    inParams,
+		OutParams:   outParams,
 		LocalParams: localParams,
-		Body: body,
+		Body:        body,
 	}, nil
 }
 
@@ -457,7 +457,8 @@ func Parse(r io.Reader) (*File, error) {
 		done <- err
 
 		// Consume all tokens
-		for range items {}
+		for range items {
+		}
 	}()
 
 	if err := l.lex(); err != nil {
