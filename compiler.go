@@ -102,6 +102,7 @@ func (c *compiler) expr(e Expr, ctx *context) (value.Value, error) {
 			typs[i] = values[i].Type()
 		}
 
+		// TODO: maybe don't use globals for tuples
 		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(typs...)))
 		glob.Linkage = enum.LinkagePrivate
 
@@ -236,7 +237,18 @@ func (c *compiler) node(n *Node) error {
 		for name = range n.OutParams {}
 		ret = vars[name]
 	} else {
-		// TODO
+		glob := c.m.NewGlobalDef(ctx.freshGlobal(), constant.NewUndef(types.NewStruct(retTypes...)))
+		glob.Linkage = enum.LinkagePrivate
+
+		i := 0
+		for name := range n.OutParams {
+			ptr := ctx.b.NewGetElementPtr(glob, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, int64(i)))
+			ptr.InBounds = true
+			ctx.b.NewStore(vars[name], ptr)
+			i++
+		}
+
+		ret = glob
 	}
 
 	entry.NewRet(ret)
