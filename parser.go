@@ -447,7 +447,7 @@ func Parse(r io.Reader) (*File, error) {
 	items := make(chan item, 2)
 	done := make(chan error, 1)
 
-	l := lexer{bufio.NewReader(r), items}
+	l := lexer{in: bufio.NewReader(r), out: items}
 	p := parser{items, nil}
 
 	var f *File
